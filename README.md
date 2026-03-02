@@ -65,7 +65,9 @@ http://localhost:8000
 
 ### How to Use
 
-1. **Enter TikTok Profile URL**: Paste a TikTok profile URL in the input field (e.g., `https://www.tiktok.com/@username`)
+1. **Enter TikTok Profile URL**: Paste a TikTok profile URL in the input field
+   - **Sample Input**: `https://www.tiktok.com/@{username}`
+   - Replace `{username}` with the actual TikTok username (e.g., `https://www.tiktok.com/@cristiano`)
 2. **Fetch Profile**: Click "Fetch Profile" to preview the profile and see the number of posts
 3. **Download**: Click "Download All" to start downloading all videos from the profile
 4. **Check Downloads**: Downloaded videos are saved in the `downloads/` directory
