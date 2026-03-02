@@ -1,0 +1,265 @@
+<!doctype html>
+<html>
+  <head>
+    <title>TikTok Downloader</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 50px auto;
+        padding: 20px;
+        background-color: #f5f5f5;
+      }
+
+      h1 {
+        color: #333;
+      }
+
+      form {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+      }
+
+      input[type="text"],
+      button {
+        padding: 10px 15px;
+        font-size: 14px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        margin: 5px;
+      }
+
+      input[type="text"] {
+        width: 60%;
+      }
+
+      button {
+        background-color: #0066cc;
+        color: white;
+        cursor: pointer;
+        border: none;
+      }
+
+      button:hover {
+        background-color: #0052a3;
+      }
+
+      .profile-info {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      /* Popup Notification Styles */
+      .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+      }
+
+      .modal.show {
+        display: block;
+      }
+
+      .modal-content {
+        background-color: white;
+        margin: 10% auto;
+        padding: 30px;
+        border-radius: 8px;
+        width: 90%;
+        max-width: 500px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        text-align: center;
+      }
+
+      .modal-header {
+        font-size: 20px;
+        font-weight: bold;
+        margin-bottom: 15px;
+      }
+
+      .modal-body {
+        margin: 20px 0;
+        font-size: 14px;
+        color: #666;
+      }
+
+      .success {
+        color: #28a745;
+      }
+
+      .error {
+        color: #dc3545;
+      }
+
+      .modal-footer {
+        margin-top: 20px;
+      }
+
+      .modal-footer button {
+        margin: 5px;
+      }
+
+      .close-btn {
+        background-color: #6c757d;
+      }
+
+      .close-btn:hover {
+        background-color: #5a6268;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>TikTok Profile Downloader</h1>
+
+    <form action="/fetch" method="post" id="fetchForm">
+      <input
+        type="text"
+        name="profile_url"
+        placeholder="Paste TikTok profile URL"
+        size="50"
+        required
+      />
+      <button type="submit">Fetch Posts</button>
+    </form>
+
+    {% if username %}
+    <div class="profile-info">
+      <h2>Profile: {{ username }}</h2>
+      <p>Total Posts: {{ post_count }}</p>
+
+      <form id="downloadForm">
+        <input type="hidden" name="profile_url" value="{{ profile_url }}" />
+        <button type="submit">Download All Videos</button>
+      </form>
+    </div>
+    {% endif %}
+
+    <!-- Download Notification Modal -->
+    <div id="downloadModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header" id="modalHeader">Download Status</div>
+        <div class="modal-body" id="modalBody">Processing...</div>
+        <div class="modal-footer">
+          <button class="close-btn" onclick="closeModal()">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const downloadForm = document.getElementById("downloadForm");
+      const downloadModal = document.getElementById("downloadModal");
+      const modalHeader = document.getElementById("modalHeader");
+      const modalBody = document.getElementById("modalBody");
+
+      if (downloadForm) {
+        downloadForm.addEventListener("submit", async function (e) {
+          e.preventDefault();
+
+          const profileUrl = downloadForm.querySelector(
+            'input[name="profile_url"]',
+          ).value;
+
+          // Validate profile URL
+          if (!profileUrl || profileUrl.trim() === "") {
+            modalHeader.textContent = "✗ Error";
+            modalHeader.classList.add("error");
+            modalBody.innerHTML = `
+              <p class="error"><strong>Profile URL is missing!</strong></p>
+            `;
+            showModal();
+            return;
+          }
+
+          // Show modal with loading state
+          showModal();
+          modalHeader.classList.remove("success", "error");
+          modalHeader.textContent = "Downloading...";
+          modalBody.textContent = "Please wait, this may take a few minutes...";
+
+          try {
+            const params = new URLSearchParams();
+            params.append("profile_url", profileUrl);
+
+            const response = await fetch("/download", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+              },
+              body: params,
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+              // Handle HTTP error responses (422, 500, etc.)
+              modalHeader.textContent = "✗ Download Failed";
+              modalHeader.classList.remove("success");
+              modalHeader.classList.add("error");
+
+              let errorMsg = "Unknown error";
+              if (data.detail) {
+                if (typeof data.detail === "string") {
+                  errorMsg = data.detail;
+                } else if (Array.isArray(data.detail)) {
+                  errorMsg = data.detail.map((e) => e.msg).join(", ");
+                }
+              }
+
+              modalBody.innerHTML = `
+                <p class="error"><strong>HTTP ${response.status}: ${errorMsg}</strong></p>
+              `;
+            } else if (data.status === "success") {
+              modalHeader.textContent = "✓ Download Complete!";
+              modalHeader.classList.remove("error");
+              modalHeader.classList.add("success");
+              modalBody.innerHTML = `
+                <p class="success"><strong>${data.message}</strong></p>
+                <p>Files saved to: <br/><code>${data.base_path}</code></p>
+              `;
+            } else {
+              modalHeader.textContent = "✗ Download Failed";
+              modalHeader.classList.remove("success");
+              modalHeader.classList.add("error");
+              modalBody.innerHTML = `
+                <p class="error"><strong>${data.message || "Unknown error"}</strong></p>
+              `;
+            }
+          } catch (error) {
+            modalHeader.textContent = "✗ Error";
+            modalHeader.classList.remove("success");
+            modalHeader.classList.add("error");
+            modalBody.innerHTML = `
+              <p class="error"><strong>Network error: ${error.message}</strong></p>
+            `;
+          }
+        });
+      }
+
+      function showModal() {
+        downloadModal.classList.add("show");
+      }
+
+      function closeModal() {
+        downloadModal.classList.remove("show");
+        modalHeader.classList.remove("success", "error");
+      }
+
+      // Close modal when clicking outside
+      downloadModal.addEventListener("click", function (e) {
+        if (e.target === downloadModal) {
+          closeModal();
+        }
+      });
+    </script>
+  </body>
+</html>
