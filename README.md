@@ -32,7 +32,7 @@ cd tiktok_web_downloader
 
 ```bash
 python -m venv .tiktok_env
-source .tiktok_env/bin/activate  # On Windows: .tiktok_env\Scripts\activate
+source .tiktok_env/bin/activate  # Or on Windows: .tiktok_env\Scripts\activate
 ```
 
 3. **Install dependencies:**
